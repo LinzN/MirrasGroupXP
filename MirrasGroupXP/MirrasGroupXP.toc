@@ -1,0 +1,12 @@
+## Interface: 16001
+## Title: Mirra's Group XP
+## Notes: See your party's XP bars, announce level ups and answer !xp, !count and !roll in chat.
+## Author: Kekshaus
+## Version: 1.2.4
+## IconTexture: Interface\AddOns\MirrasGroupXP\media\icon
+## SavedVariables: MirrasGroupXPDB
+## X-Credits: Based on Group XP by Clamchowder and Kekshaus
+
+Core.lua
+Bars.lua
+Options.lua
