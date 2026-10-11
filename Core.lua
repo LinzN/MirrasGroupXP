@@ -8,7 +8,7 @@ ns.TITLE  = "Mirra's Group XP"
 ns.PREFIX = "MSGXP" -- kept from earlier versions so mixed versions still sync
 
 ns.defaults = {
-    dbVersion    = 4,
+    dbVersion    = 5,
     visible      = true,
     showSelf     = true,
     showRested   = true,
@@ -20,6 +20,11 @@ ns.defaults = {
     height       = 14,
     scale        = 1.15,
     spacing      = 6,
+    -- Colors as { r, g, b, a }; the textures are grayscale and tinted with these.
+    barColor     = { 0.78, 0.22, 0.92, 1 },
+    restedColor  = { 0.30, 0.55, 1.00, 0.65 },
+    borderColor  = { 0.51, 0.51, 0.53, 1 },
+    bgColor      = { 0.133, 0.133, 0.133, 1 },
     point        = { "CENTER", "CENTER", 0, 0 },
 }
 
@@ -432,6 +437,17 @@ local function Migrate(db)
     end
     db.locked, db.segments = nil, nil -- removed options
     db.dbVersion = ns.defaults.dbVersion
+end
+
+ns.COLOR_KEYS = { "barColor", "restedColor", "borderColor", "bgColor" }
+
+function ns.ResetColors()
+    for _, key in ipairs(ns.COLOR_KEYS) do
+        ns.db[key] = nil
+    end
+    CopyDefaults(ns.defaults, ns.db)
+    ns.Layout()
+    ns.RefreshOptions()
 end
 
 function ns.ResetSettings()

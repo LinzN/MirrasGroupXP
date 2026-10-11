@@ -9,8 +9,6 @@ local LABEL_H       = 14   -- space above each bar for name and level
 local LEVEL_W       = 26
 local FONT          = "GameFontHighlightSmallOutline"
 local MEDIA         = "Interface\\AddOns\\MirrasGroupXP\\media\\"
-local BAR_COLOR     = { 0.78, 0.22, 0.92 }
-local RESTED_COLOR  = { 0.30, 0.55, 1.00, 0.65 }
 local OFFLINE_COLOR = { 0.45, 0.45, 0.45 }
 
 local UNITS = { "player", "party1", "party2", "party3", "party4" }
@@ -92,25 +90,45 @@ local function CreateFill(parent, level)
     return f
 end
 
+-- Three textures (left cap, stretched middle, right cap) from one image:
+-- left quarter = left cap, middle half = middle, right quarter = right cap.
+local function CreateSlices(owner, layer, file)
+    local slices = {}
+    local coords = { { 0, 0.25 }, { 0.25, 0.75 }, { 0.75, 1 } }
+    for i, c in ipairs(coords) do
+        local t = owner:CreateTexture(nil, layer)
+        t:SetTexture(MEDIA .. file)
+        t:SetTexCoord(c[1], c[2], 0, 1)
+        slices[i] = t
+    end
+    function slices:SetColor(r, g, b, a)
+        for i = 1, 3 do self[i]:SetVertexColor(r, g, b, a or 1) end
+    end
+    function slices:Layout(w, h)
+        local cap = h / 2
+        self[1]:ClearAllPoints()
+        self[1]:SetPoint("TOPLEFT", owner, "TOPLEFT")
+        self[1]:SetSize(cap, h)
+        self[3]:ClearAllPoints()
+        self[3]:SetPoint("TOPRIGHT", owner, "TOPRIGHT")
+        self[3]:SetSize(cap, h)
+        self[2]:ClearAllPoints()
+        self[2]:SetPoint("TOPLEFT", self[1], "TOPRIGHT")
+        self[2]:SetPoint("BOTTOMRIGHT", self[3], "BOTTOMLEFT")
+    end
+    return slices
+end
+
 local function CreatePill(parent)
     local p = CreateFrame("Frame", nil, parent)
     local base = p:GetFrameLevel()
 
-    -- frame.tga: left quarter = left cap, middle half = stretched, right quarter = right cap
-    p.bgL = p:CreateTexture(nil, "BACKGROUND")
-    p.bgL:SetTexture(MEDIA .. "frame")
-    p.bgL:SetTexCoord(0, 0.25, 0, 1)
-    p.bgM = p:CreateTexture(nil, "BACKGROUND")
-    p.bgM:SetTexture(MEDIA .. "frame")
-    p.bgM:SetTexCoord(0.25, 0.75, 0, 1)
-    p.bgR = p:CreateTexture(nil, "BACKGROUND")
-    p.bgR:SetTexture(MEDIA .. "frame")
-    p.bgR:SetTexCoord(0.75, 1, 0, 1)
+    -- Background and border are separate grayscale textures, so both can be colored.
+    p.bg = CreateSlices(p, "BACKGROUND", "bg")
+    p.border = CreateSlices(p, "BORDER", "border")
 
     p.rested = CreateFill(p, base + 1)
-    p.rested:SetColor(unpack(RESTED_COLOR))
     p.fill = CreateFill(p, base + 2)
-    p.fill:SetColor(unpack(BAR_COLOR))
 
     -- Text inside the bar, above the fill
     p.textFrame = CreateFrame("Frame", nil, p)
@@ -128,15 +146,8 @@ local function CreatePill(parent)
     function p:LayoutPill(w, h)
         self:SetSize(w, h)
         local cap = h / 2
-        self.bgL:ClearAllPoints()
-        self.bgL:SetPoint("TOPLEFT", self, "TOPLEFT")
-        self.bgL:SetSize(cap, h)
-        self.bgR:ClearAllPoints()
-        self.bgR:SetPoint("TOPRIGHT", self, "TOPRIGHT")
-        self.bgR:SetSize(cap, h)
-        self.bgM:ClearAllPoints()
-        self.bgM:SetPoint("TOPLEFT", self.bgL, "TOPRIGHT")
-        self.bgM:SetPoint("BOTTOMRIGHT", self.bgR, "BOTTOMLEFT")
+        self.bg:Layout(w, h)
+        self.border:Layout(w, h)
 
         local inset = math.max(1, math.floor(h * 0.14 + 0.5))
         local ih = h - inset * 2
@@ -156,12 +167,17 @@ local function CreatePill(parent)
         self.textFrame:SetShown(h >= 10)
     end
 
+    function p:ApplyColors()
+        local db = ns.db
+        self.bg:SetColor(unpack(db.bgColor))
+        self.border:SetColor(unpack(db.borderColor))
+        self.rested:SetColor(unpack(db.restedColor))
+        self:SetGray(self.gray)
+    end
+
     function p:SetGray(gray)
-        if gray then
-            self.fill:SetColor(unpack(OFFLINE_COLOR))
-        else
-            self.fill:SetColor(unpack(BAR_COLOR))
-        end
+        self.gray = gray
+        self.fill:SetColor(unpack(gray and OFFLINE_COLOR or ns.db.barColor))
     end
     return p
 end
@@ -328,6 +344,7 @@ function ns.Layout()
             row:SetPoint("TOPLEFT", container, "TOPLEFT", PAD, y)
             row:SetSize(db.width, LABEL_H + db.height)
             row.pill:LayoutPill(db.width, db.height)
+            row.pill:ApplyColors()
             row.name:SetWidth(math.max(20, db.width - LEVEL_W - 8))
             row:Show()
             UpdateRow(row)

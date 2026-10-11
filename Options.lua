@@ -118,6 +118,85 @@ local function CreateSlider(parent, label, key, minV, maxV, step, fmt, onChange)
     return holder
 end
 
+-- Color swatch: opens the color picker (with opacity) and applies the
+-- color live. Cancel restores the previous color.
+local function OpenColorPicker(color, onChange)
+    local prev = { color[1], color[2], color[3], color[4] or 1 }
+
+    local function Apply()
+        local r, g, b = ColorPickerFrame:GetColorRGB()
+        local a = ColorPickerFrame.GetColorAlpha and ColorPickerFrame:GetColorAlpha() or color[4] or 1
+        color[1], color[2], color[3], color[4] = r, g, b, a
+        onChange()
+    end
+
+    local function Cancel()
+        color[1], color[2], color[3], color[4] = prev[1], prev[2], prev[3], prev[4]
+        onChange()
+    end
+
+    if ColorPickerFrame.SetupColorPickerAndShow then
+        ColorPickerFrame:SetupColorPickerAndShow({
+            r = prev[1], g = prev[2], b = prev[3],
+            opacity = prev[4],
+            hasOpacity = true,
+            swatchFunc = Apply,
+            opacityFunc = Apply,
+            cancelFunc = Cancel,
+        })
+    else
+        -- Older color picker API: opacity is stored inverted
+        ColorPickerFrame:Hide()
+        ColorPickerFrame.func = function()
+            Apply()
+            if OpacitySliderFrame then color[4] = 1 - OpacitySliderFrame:GetValue() onChange() end
+        end
+        ColorPickerFrame.opacityFunc = ColorPickerFrame.func
+        ColorPickerFrame.cancelFunc = Cancel
+        ColorPickerFrame.hasOpacity = true
+        ColorPickerFrame.opacity = 1 - prev[4]
+        ColorPickerFrame:SetColorRGB(prev[1], prev[2], prev[3])
+        ColorPickerFrame:Show()
+    end
+end
+
+local function CreateColorSwatch(parent, label, tooltip, key, onChange)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(20, 20)
+
+    local border = b:CreateTexture(nil, "BACKGROUND")
+    border:SetAllPoints()
+    border:SetColorTexture(0.8, 0.8, 0.8, 1)
+    -- Dark backdrop so the opacity is visible
+    local back = b:CreateTexture(nil, "BORDER")
+    back:SetPoint("TOPLEFT", 1, -1)
+    back:SetPoint("BOTTOMRIGHT", -1, 1)
+    back:SetColorTexture(0.1, 0.1, 0.1, 1)
+    local swatch = b:CreateTexture(nil, "ARTWORK")
+    swatch:SetPoint("TOPLEFT", 2, -2)
+    swatch:SetPoint("BOTTOMRIGHT", -2, 2)
+    swatch:SetColorTexture(1, 1, 1, 1)
+
+    local fs = b:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    fs:SetPoint("LEFT", b, "RIGHT", 8, 0)
+    fs:SetText(label)
+    b:SetHitRectInsets(0, -110, 0, 0) -- label is clickable too
+
+    b.Refresh = function()
+        local c = ns.db[key]
+        swatch:SetVertexColor(c[1], c[2], c[3], c[4] or 1)
+    end
+    b:SetScript("OnClick", function()
+        OpenColorPicker(ns.db[key], function()
+            b.Refresh()
+            if onChange then onChange() end
+        end)
+    end)
+    AddTooltip(b, label, tooltip)
+    table.insert(controls, b)
+    return b
+end
+
 local function CreateButton(parent, text, width, onClick)
     local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
     b:SetSize(width, 24)
@@ -208,9 +287,29 @@ local function BuildPanel()
     Slider("Scale", "scale", 0.5, 2.5, 0.05, function(v) return format("%.2f", v) end)
     Slider("Spacing", "spacing", 0, 40, 1, Int)
 
+    -- Colors
+    local colors = panel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    colors:SetPoint("TOPLEFT", sprev, "BOTTOMLEFT", 0, -10)
+    colors:SetText("Colors")
+
+    local cprev, cy = colors, -8
+    local function Swatch(label, tip, key)
+        local sw = CreateColorSwatch(panel, label, tip, key, Relayout)
+        sw:SetPoint("TOPLEFT", cprev, "BOTTOMLEFT", 0, cy)
+        cprev, cy = sw, -6
+        return sw
+    end
+    Swatch("Experience", "Color of the XP fill.", "barColor")
+    Swatch("Rested XP", "Color of the rested XP overlay. Lower the opacity to make it more subtle.", "restedColor")
+    Swatch("Border", "Color of the bar border.", "borderColor")
+    Swatch("Background", "Color of the empty part of the bar.", "bgColor")
+
+    local colorBtn = CreateButton(panel, "Reset colors", 120, function() ns.ResetColors() end)
+    colorBtn:SetPoint("LEFT", cprev, "RIGHT", 130, 0)
+
     -- Buttons
     local testBtn = CreateButton(panel, "Toggle test bars", 150, function() ns.ToggleTest() end)
-    testBtn:SetPoint("TOPLEFT", sprev, "BOTTOMLEFT", 0, -14)
+    testBtn:SetPoint("TOPLEFT", cprev, "BOTTOMLEFT", 0, -16)
 
     local moveHint = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     moveHint:SetPoint("TOPLEFT", testBtn, "BOTTOMLEFT", 0, -40)
