@@ -227,6 +227,7 @@ local function Relayout() ns.Layout() end
 
 local function BuildPanel()
     panel = CreateFrame("Frame")
+    panel:Hide() -- hidden at first, so OnShow also fires the first time the panel is opened
     panel.name = ns.TITLE
 
     -- Header without icon, version or author (same style as the other Mirra's addons)
