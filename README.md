@@ -23,14 +23,13 @@ It is a complete rework of the classic *Group XP* addon for the WoW Forever clie
 
 ## Installation
 
-1. Download the latest release (or this repository).
-2. Put the addon files into a folder named `MirrasGroupXP` inside the `Interface\AddOns` folder of your WoW Forever installation:
+1. Download the latest release and unzip it.
+2. Copy the `MirrasGroupXP` folder into the AddOns folder of your WoW Forever installation:
 
    ```
-   <WoW Forever folder>\Interface\AddOns\MirrasGroupXP\MirrasGroupXP.toc
+   <WoW Forever folder>\Interface\AddOns\MirrasGroupXP
    ```
 
-   The folder name must be exactly `MirrasGroupXP`.
 3. Start the game (or `/reload`) and enable the addon in the AddOns list.
 
 ## Slash commands
