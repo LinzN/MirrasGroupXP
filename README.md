@@ -12,7 +12,8 @@ It is a complete rework of the classic *Group XP* addon for the WoW Forever clie
 
 - Rounded XP bars for every party member (and optionally yourself) with class-colored names, level, percent and `current / max` XP
 - Rested XP shown as an overlay
-- Customizable colors for the XP fill, rested XP, border and background (with opacity)
+- Customizable colors for the XP fill and rested XP (with opacity)
+- Adjustable corner rounding of the bar ends, from fully round to square
 - Live XP sync between group members who use the addon
 - Falls back to `!xp` replies in group chat for members without the addon
 - XP line on party member tooltips
@@ -63,8 +64,8 @@ When *Answer chat commands* is enabled, the addon replies to these messages in p
 
 - Show XP bars, include my own XP, show rested XP
 - XP on party tooltips, answer chat commands, announce level-ups (with custom message)
-- Bar width, height, scale and spacing
-- Colors: experience, rested XP, border and background, each with opacity, plus a *Reset colors* button
+- Bar width, height, corner rounding, scale and spacing
+- Colors: experience and rested XP, each with opacity, plus a *Reset colors* button
 - Toggle test bars, reset position, reset all settings
 
 ## Credits

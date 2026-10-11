@@ -284,6 +284,7 @@ local function BuildPanel()
     local function Int(v) return format("%d", v) end
     Slider("Bar width", "width", 60, 400, 5, Int)
     Slider("Bar height", "height", 6, 40, 1, Int)
+    Slider("Corner rounding", "roundness", 0, 100, 10, function(v) return format("%d%%", v) end)
     Slider("Scale", "scale", 0.5, 2.5, 0.05, function(v) return format("%.2f", v) end)
     Slider("Spacing", "spacing", 0, 40, 1, Int)
 
@@ -301,8 +302,6 @@ local function BuildPanel()
     end
     Swatch("Experience", "Color of the XP fill.", "barColor")
     Swatch("Rested XP", "Color of the rested XP overlay. Lower the opacity to make it more subtle.", "restedColor")
-    Swatch("Border", "Color of the bar border.", "borderColor")
-    Swatch("Background", "Color of the empty part of the bar.", "bgColor")
 
     local colorBtn = CreateButton(panel, "Reset colors", 120, function() ns.ResetColors() end)
     colorBtn:SetPoint("LEFT", cprev, "RIGHT", 130, 0)
@@ -331,13 +330,14 @@ local function BuildPanel()
 
     local helpText = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     helpText:SetPoint("TOPLEFT", help, "BOTTOMLEFT", 0, -8)
+    helpText:SetWidth(300) -- wrap inside the left column
     helpText:SetJustifyH("LEFT")
     helpText:SetSpacing(3)
     helpText:SetText(
         "|cffffd100!xp|r - everyone with the addon posts their level and XP\n" ..
         "|cffffd100!count <item>|r - everyone posts how many of that item they have\n" ..
-        "|cffffd100!roll|r - everyone rolls 1-100  (|cffffd100!roll 50|r = 1-50, |cffffd100!roll 10 50|r = 10-50)\n\n" ..
-        "|cffffd100/mgxp|r opens this panel  -  |cffffd100/mgxp help|r lists all slash commands")
+        "|cffffd100!roll|r - everyone rolls 1-100 (|cffffd100!roll 50|r = 1-50, |cffffd100!roll 10 50|r = 10-50)\n\n" ..
+        "|cffffd100/mgxp|r opens this panel, |cffffd100/mgxp help|r lists all slash commands")
 
     panel:SetScript("OnShow", function() ns.RefreshOptions() end)
 end

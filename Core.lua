@@ -20,11 +20,10 @@ ns.defaults = {
     height       = 14,
     scale        = 1.15,
     spacing      = 6,
-    -- Colors as { r, g, b, a }; the textures are grayscale and tinted with these.
+    roundness    = 100, -- corner rounding of the bar ends in % (steps of 10)
+    -- Colors as { r, g, b, a }; the fill textures are grayscale and tinted with these.
     barColor     = { 0.78, 0.22, 0.92, 1 },
     restedColor  = { 0.30, 0.55, 1.00, 0.65 },
-    borderColor  = { 0.51, 0.51, 0.53, 1 },
-    bgColor      = { 0.133, 0.133, 0.133, 1 },
     point        = { "CENTER", "CENTER", 0, 0 },
 }
 
@@ -436,10 +435,11 @@ local function Migrate(db)
         if db.scale == 1 then db.scale = 1.15 end
     end
     db.locked, db.segments = nil, nil -- removed options
+    db.borderColor, db.bgColor = nil, nil -- only in 1.3.0
     db.dbVersion = ns.defaults.dbVersion
 end
 
-ns.COLOR_KEYS = { "barColor", "restedColor", "borderColor", "bgColor" }
+ns.COLOR_KEYS = { "barColor", "restedColor" }
 
 function ns.ResetColors()
     for _, key in ipairs(ns.COLOR_KEYS) do

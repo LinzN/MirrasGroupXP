@@ -34,6 +34,13 @@ local function ClassColor(classFile)
 end
 
 -- Unknown (secret) counts as online.
+-- Corner rounding in steps of 10 %; every step has its own frame_<n> and
+-- fillcap_<n> texture (pre-rendered, so the gradient stays correct).
+local function RoundnessSuffix()
+    local r = tonumber(ns.db.roundness) or 100
+    return tostring(math.max(0, math.min(100, math.floor(r / 10 + 0.5) * 10)))
+end
+
 local function UnitOnline(unit)
     local ok, online = pcall(UnitIsConnected, unit)
     return not ok or plain(online) ~= false
@@ -48,14 +55,17 @@ local function CreateFill(parent, level)
     local f = CreateFrame("Frame", nil, parent)
     f:SetFrameLevel(level)
     f.capL = f:CreateTexture(nil, "ARTWORK")
-    f.capL:SetTexture(MEDIA .. "fillcap")
     f.capR = f:CreateTexture(nil, "ARTWORK")
-    f.capR:SetTexture(MEDIA .. "fillcap")
     f.capR:SetTexCoord(1, 0, 0, 1)
     f.bar = CreateFrame("StatusBar", nil, f)
     f.bar:SetFrameLevel(level)
     f.bar:SetStatusBarTexture(MEDIA .. "fill")
     f.bar:SetMinMaxValues(0, 100)
+
+    function f:SetCapTexture(file)
+        self.capL:SetTexture(file)
+        self.capR:SetTexture(file)
+    end
 
     function f:SetColor(r, g, b, a)
         a = a or 1
@@ -90,42 +100,17 @@ local function CreateFill(parent, level)
     return f
 end
 
--- Three textures (left cap, stretched middle, right cap) from one image:
--- left quarter = left cap, middle half = middle, right quarter = right cap.
-local function CreateSlices(owner, layer, file)
-    local slices = {}
-    local coords = { { 0, 0.25 }, { 0.25, 0.75 }, { 0.75, 1 } }
-    for i, c in ipairs(coords) do
-        local t = owner:CreateTexture(nil, layer)
-        t:SetTexture(MEDIA .. file)
-        t:SetTexCoord(c[1], c[2], 0, 1)
-        slices[i] = t
-    end
-    function slices:SetColor(r, g, b, a)
-        for i = 1, 3 do self[i]:SetVertexColor(r, g, b, a or 1) end
-    end
-    function slices:Layout(w, h)
-        local cap = h / 2
-        self[1]:ClearAllPoints()
-        self[1]:SetPoint("TOPLEFT", owner, "TOPLEFT")
-        self[1]:SetSize(cap, h)
-        self[3]:ClearAllPoints()
-        self[3]:SetPoint("TOPRIGHT", owner, "TOPRIGHT")
-        self[3]:SetSize(cap, h)
-        self[2]:ClearAllPoints()
-        self[2]:SetPoint("TOPLEFT", self[1], "TOPRIGHT")
-        self[2]:SetPoint("BOTTOMRIGHT", self[3], "BOTTOMLEFT")
-    end
-    return slices
-end
-
 local function CreatePill(parent)
     local p = CreateFrame("Frame", nil, parent)
     local base = p:GetFrameLevel()
 
-    -- Background and border are separate grayscale textures, so both can be colored.
-    p.bg = CreateSlices(p, "BACKGROUND", "bg")
-    p.border = CreateSlices(p, "BORDER", "border")
+    -- frame.tga: left quarter = left cap, middle half = stretched, right quarter = right cap
+    p.bgL = p:CreateTexture(nil, "BACKGROUND")
+    p.bgL:SetTexCoord(0, 0.25, 0, 1)
+    p.bgM = p:CreateTexture(nil, "BACKGROUND")
+    p.bgM:SetTexCoord(0.25, 0.75, 0, 1)
+    p.bgR = p:CreateTexture(nil, "BACKGROUND")
+    p.bgR:SetTexCoord(0.75, 1, 0, 1)
 
     p.rested = CreateFill(p, base + 1)
     p.fill = CreateFill(p, base + 2)
@@ -146,8 +131,15 @@ local function CreatePill(parent)
     function p:LayoutPill(w, h)
         self:SetSize(w, h)
         local cap = h / 2
-        self.bg:Layout(w, h)
-        self.border:Layout(w, h)
+        self.bgL:ClearAllPoints()
+        self.bgL:SetPoint("TOPLEFT", self, "TOPLEFT")
+        self.bgL:SetSize(cap, h)
+        self.bgR:ClearAllPoints()
+        self.bgR:SetPoint("TOPRIGHT", self, "TOPRIGHT")
+        self.bgR:SetSize(cap, h)
+        self.bgM:ClearAllPoints()
+        self.bgM:SetPoint("TOPLEFT", self.bgL, "TOPRIGHT")
+        self.bgM:SetPoint("BOTTOMRIGHT", self.bgR, "BOTTOMLEFT")
 
         local inset = math.max(1, math.floor(h * 0.14 + 0.5))
         local ih = h - inset * 2
@@ -167,11 +159,19 @@ local function CreatePill(parent)
         self.textFrame:SetShown(h >= 10)
     end
 
-    function p:ApplyColors()
-        local db = ns.db
-        self.bg:SetColor(unpack(db.bgColor))
-        self.border:SetColor(unpack(db.borderColor))
-        self.rested:SetColor(unpack(db.restedColor))
+    -- Textures for the current corner rounding, and the bar colors.
+    function p:ApplyStyle()
+        local suffix = RoundnessSuffix()
+        if self.suffix ~= suffix then
+            self.suffix = suffix
+            local frameFile = MEDIA .. "frame_" .. suffix
+            self.bgL:SetTexture(frameFile)
+            self.bgM:SetTexture(frameFile)
+            self.bgR:SetTexture(frameFile)
+            self.rested:SetCapTexture(MEDIA .. "fillcap_" .. suffix)
+            self.fill:SetCapTexture(MEDIA .. "fillcap_" .. suffix)
+        end
+        self.rested:SetColor(unpack(ns.db.restedColor))
         self:SetGray(self.gray)
     end
 
@@ -344,7 +344,7 @@ function ns.Layout()
             row:SetPoint("TOPLEFT", container, "TOPLEFT", PAD, y)
             row:SetSize(db.width, LABEL_H + db.height)
             row.pill:LayoutPill(db.width, db.height)
-            row.pill:ApplyColors()
+            row.pill:ApplyStyle()
             row.name:SetWidth(math.max(20, db.width - LEVEL_W - 8))
             row:Show()
             UpdateRow(row)
