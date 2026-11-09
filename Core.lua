@@ -11,6 +11,8 @@ ns.defaults = {
     dbVersion    = 5,
     visible      = true,
     showSelf     = true,
+    hideNoAddon  = true,  -- only show party members who use the addon
+    growUp       = false, -- add new bars above (true) or below (false)
     showRested   = true,
     tooltip      = true,
     chatCommands = true,
@@ -30,6 +32,8 @@ ns.defaults = {
 -- XP of other group members, keyed by GUID and by name key (see StoreData).
 -- Values: { level, cur, max, rested, pct, maxed }
 ns.data = {}
+-- Group members known to use the addon, keyed like ns.data.
+ns.addonUsers = {}
 ns.testMode = false
 
 ------------------------------------------------------------------------
@@ -137,6 +141,11 @@ local function StoreData(guid, sender, d)
     for _, k in ipairs(SenderKeys(sender)) do ns.data[k] = d end
 end
 
+local function MarkAddonUser(guid, sender)
+    if guid and guid ~= "" then ns.addonUsers[guid] = true end
+    for _, k in ipairs(SenderKeys(sender)) do ns.addonUsers[k] = true end
+end
+
 ------------------------------------------------------------------------
 -- XP data
 ------------------------------------------------------------------------
@@ -176,6 +185,16 @@ function ns.GetUnitData(unit)
     if guid and ns.data[guid] then return ns.data[guid] end
     local key = UnitNameKey(unit)
     return key and ns.data[key]
+end
+
+-- True if the unit has sent us addon messages (always true for the player).
+function ns.UnitHasAddon(unit)
+    local ok, isMe = pcall(UnitIsUnit, unit, "player")
+    if ok and plain(isMe) then return true end
+    local guid = UnitGUIDSafe(unit)
+    if guid and ns.addonUsers[guid] then return true end
+    local key = UnitNameKey(unit)
+    return key and ns.addonUsers[key] or false
 end
 
 local function AnyMemberUnknown()
@@ -275,13 +294,20 @@ local function OnAddonMessage(prefix, text, channel, sender)
     if type(text) ~= "string" then return end
 
     if text == "R" then
-        if not IsMe(nil, sender) then BroadcastXP() end
+        if not IsMe(nil, sender) then
+            local keys = SenderKeys(sender)
+            local known = keys[1] and ns.addonUsers[keys[1]]
+            MarkAddonUser(nil, sender)
+            BroadcastXP()
+            if not known then Refresh() end
+        end
         return
     end
     -- The GUID part is optional (versions before 1.0.2 did not send it)
     local level, cur, max, rested, maxed, guid = text:match("^X:(%d+):(%d+):(%d+):(%d+):(%d):?(.*)$")
     if not level or IsMe(guid, sender) then return end
 
+    MarkAddonUser(guid, sender)
     stats.received = stats.received + 1
     stats.lastFrom = Safe(sender)
     cur, max, maxed = tonumber(cur), tonumber(max), maxed == "1"

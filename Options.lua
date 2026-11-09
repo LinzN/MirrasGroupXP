@@ -256,7 +256,9 @@ local function BuildPanel()
     end
 
     Check("Show XP bars", "Show or hide the group XP bars.", "visible", Relayout)
-    Check("Include my own XP", "Show a bar for your own character above your party members.", "showSelf", Relayout)
+    Check("Include my own XP", "Show a bar for your own character next to your party members.", "showSelf", Relayout)
+    Check("Only players with the addon", "Hide party members who don't use Mirra's Group XP.", "hideNoAddon", Relayout)
+    Check("Grow upwards", "Add new bars above the existing ones instead of below. Your own bar stays at the bottom.", "growUp", Relayout)
     Check("Show rested XP", "Show rested experience as a blue overlay on the bars.", "showRested", Relayout)
     Check("XP on party tooltips", "Add a line with the XP of party members to their unit tooltip.", "tooltip")
     Check("Answer chat commands", "Reply to !xp, !count <item> and !roll [max] in party, instance and whisper chat.", "chatCommands")
@@ -319,6 +321,7 @@ local function BuildPanel()
     local posBtn = CreateButton(panel, "Reset position", 120, function()
         ns.db.point = { "CENTER", "CENTER", 0, 0 }
         ns.ApplyPosition()
+        ns.Layout()
     end)
     posBtn:SetPoint("LEFT", testBtn, "RIGHT", 8, 0)
 

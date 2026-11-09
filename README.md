@@ -20,6 +20,8 @@ It is a complete rework of the classic *Group XP* addon for the WoW Forever clie
 - Level-up announcement in group chat with a custom message (`[level]` placeholder)
 - Settings panel under **Options → AddOns**
 - Move the bars with **Ctrl + drag**
+- Choose whether new bars are added below or above
+- Optionally show only party members who use the addon (on by default)
 
 ## Installation
 
@@ -62,6 +64,7 @@ When *Answer chat commands* is enabled, the addon replies to these messages in p
 ## Settings
 
 - Show XP bars, include my own XP, show rested XP
+- Only players with the addon, grow upwards
 - XP on party tooltips, answer chat commands, announce level-ups (with custom message)
 - Bar width, height, corner rounding, scale and spacing
 - Colors: experience and rested XP, each with opacity, plus a *Reset colors* button

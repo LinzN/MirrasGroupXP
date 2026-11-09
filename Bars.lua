@@ -301,10 +301,34 @@ end
 ------------------------------------------------------------------------
 -- Container, layout, position
 ------------------------------------------------------------------------
+-- The container is anchored at its top edge (bars grow downwards) or at its
+-- bottom edge (bars grow upwards), so adding rows only extends it one way.
+-- container.anchoredUp: true/false once anchored that way, nil otherwise.
 function ns.ApplyPosition()
     local p = ns.db.point
     container:ClearAllPoints()
     container:SetPoint(p[1] or "CENTER", UIParent, p[2] or "CENTER", p[3] or 0, p[4] or 0)
+    if p[2] == "BOTTOMLEFT" and p[1] == "BOTTOMLEFT" then
+        container.anchoredUp = true
+    elseif p[2] == "BOTTOMLEFT" and p[1] == "TOPLEFT" then
+        container.anchoredUp = false
+    else
+        container.anchoredUp = nil
+    end
+end
+
+-- Re-anchor at the edge that matches the grow direction, keeping the
+-- current screen position, and save it.
+local function AnchorToGrowEdge()
+    local up = ns.db.growUp and true or false
+    local left = container:GetLeft()
+    local edge = up and container:GetBottom() or container:GetTop()
+    if not left or not edge then return end
+    local point = up and "BOTTOMLEFT" or "TOPLEFT"
+    container:ClearAllPoints()
+    container:SetPoint(point, UIParent, "BOTTOMLEFT", left, edge)
+    ns.db.point = { point, "BOTTOMLEFT", left, edge }
+    container.anchoredUp = up
 end
 
 -- The bars are moved by dragging a row while holding Ctrl.
@@ -318,15 +342,16 @@ function ns.StopMoving()
     if not container.isMoving then return end
     container.isMoving = false
     container:StopMovingOrSizing()
-    local point, _, relPoint, x, y = container:GetPoint()
-    ns.db.point = { point, relPoint, x, y }
+    AnchorToGrowEdge()
 end
 
 local function RowVisible(unit)
     if unit == "player" then return ns.db.showSelf end
     if ns.testMode then return true end
     local ok, exists = pcall(UnitExists, unit)
-    return ok and plain(exists) and true or false
+    if not (ok and plain(exists)) then return false end
+    if ns.db.hideNoAddon and not ns.UnitHasAddon(unit) then return false end
+    return true
 end
 
 function ns.Layout()
@@ -334,28 +359,36 @@ function ns.Layout()
     local db = ns.db
     container:SetScale(db.scale)
 
-    local y = -PAD
+    -- Rows are stacked away from the anchored edge: top to bottom when
+    -- growing down, bottom to top when growing up.
+    local up = db.growUp
+    local offset = PAD
     local anything = false
 
     for _, unit in ipairs(UNITS) do
         local row = rows[unit]
         if RowVisible(unit) then
             row:ClearAllPoints()
-            row:SetPoint("TOPLEFT", container, "TOPLEFT", PAD, y)
+            if up then
+                row:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", PAD, offset)
+            else
+                row:SetPoint("TOPLEFT", container, "TOPLEFT", PAD, -offset)
+            end
             row:SetSize(db.width, LABEL_H + db.height)
             row.pill:LayoutPill(db.width, db.height)
             row.pill:ApplyStyle()
             row.name:SetWidth(math.max(20, db.width - LEVEL_W - 8))
             row:Show()
             UpdateRow(row)
-            y = y - (LABEL_H + db.height) - db.spacing
+            offset = offset + (LABEL_H + db.height) + db.spacing
             anything = true
         else
             row:Hide()
         end
     end
 
-    container:SetSize(db.width + PAD * 2, math.max(-y - db.spacing + PAD, 30))
+    container:SetSize(db.width + PAD * 2, math.max(offset - db.spacing + PAD, 30))
+    if container.anchoredUp ~= (up and true or false) then AnchorToGrowEdge() end
 
     if db.visible and anything then
         container:Show()
